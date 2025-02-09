@@ -9,6 +9,11 @@ jobs:
     steps:
       - name: Get code
         uses: actions/checkout@v3
+      - name: Cache dependencies #Here we are caching the dpendencies so it needs not be done multiple times in different workflows
+        uses: actions/cache@v3
+        with: 
+          path: ~/.npm #For node this is the path which needs to be cached
+          key: deps-node-modules-${{ hashFiles('**/package-lock.json')}} #this will hashfiles what is passed to it. Which ever directory has package-lock.json #for a nodeJS OR React Project package-lock.json file keeps the dependencies #this key will be used to install dependencies
       - name: Install dependencies
         run: npm ci
       - name: Lint code
@@ -18,13 +23,23 @@ jobs:
   build: #Here the saved files are run on remote machine. THey have to used futher processing. Contents of dist folder act a artifacts
     needs: test ##Completed Code
     runs-on: ubuntu-latest
+    outputs:
+      script-file: ${{ step.publish.outputs.script-file }} #${{ step.IDNAMEDEFINEDBELOW.outputs.FileNAMEDEFINEBELOW }} #this is object than can help accessing the object step you want ot access value.
     steps:
       - name: Get code
         uses: actions/checkout@v3
+      - name: Cache dependencies #The cashing is global. So it will be saved for future use. #Here we are caching the dpendencies so it needs not be done multiple times in different workflows
+        uses: actions/cache@v3
+        with: 
+          path: ~/.npm #For node this is the path which needs to be cached
+          key: deps-node-modules-${{ hashFiles('**/package-lock.json')}} #this will hashfiles what is passed to it. Which ever directory has package-lock.json #for a nodeJS OR React Project package-lock.json file keeps the dependencies #this key will be used to install dependencies
       - name: Install dependencies
         run: npm ci
       - name: Build website
         run: npm run build
+      - name: Publish JS filename #here the task is to get the file name of the Java script object created. to make it available in other jobs
+        id: Publish
+        run:  find dist/assets/*.js -type f -execdir echo 'script-file={}' >> $GITHUB_OUTPUT ';' #script-file is just the name it can be any name #this is linux command to get the name of the javascript file
       - name: Upload artifacts #To upload artifacts
         uses: actions/upload-artifact@v3
         with: #it has to be provided nmae to reterive those artifacts  
@@ -43,5 +58,7 @@ jobs:
           name: dist-files
       - name: Output Contents
         run: ls
+      - name: Output filename #This is a feature required to pass data between jobs
+        run: echo "${{ needs.build.outputs.script-file }}" #needs.TheJobItIsDependentOnbuild.outputs(keyword).Outpute->script-fileDefinedInpreviousJob(script-file)
       - name: Deploy
         run: echo "Deploying..."
