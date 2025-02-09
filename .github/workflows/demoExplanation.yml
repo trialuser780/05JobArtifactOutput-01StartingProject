@@ -1,0 +1,41 @@
+name: Deploy website
+on:
+  push:
+    branches:
+      - main
+jobs:
+  test: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint code
+        run: npm run lint
+      - name: Test code
+        run: npm run test
+  build: #Here the saved files are run on remote machine. THey have to used futher processing. Contents of dist folder act a artifacts
+    needs: test ##Completed Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Build website
+        run: npm run build
+      - name: Upload artifacts #To upload artifacts
+        uses: actions/upload-artifact@v3
+        with: #it has to be provided nmae to reterive those artifacts  
+          name: dist-files #Can be provide any name here it is this 
+          path: dist #Stored in dist folder. See offical documentation of include, not include with regex combination
+          #path: | #simulating multiple paths and files
+            #dist
+            #package.json
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy
+        run: echo "Deploying..."
